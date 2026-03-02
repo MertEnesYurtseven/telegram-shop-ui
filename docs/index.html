@@ -7,7 +7,13 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: sans-serif; background-color: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); padding: 20px; margin: 0; }
+        
+        /* Updated Product CSS for Images */
         .product { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding: 15px 0; }
+        .product-info { display: flex; align-items: center; gap: 15px; }
+        .product-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background-color: rgba(0,0,0,0.05); }
+        .product-details { display: flex; flex-direction: column; gap: 4px; }
+        
         .controls { display: flex; align-items: center; gap: 10px; }
         button { background-color: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; }
         .checkout-box { margin-top: 30px; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 8px; }
@@ -64,10 +70,11 @@
         const maxPoints = parseFloat(urlParams.get('points')) || 0;
         document.getElementById('user-points').innerText = maxPoints.toFixed(2);
 
+        // 1. ADDED IMAGE URLS TO CATALOG
         const catalog = [
-            { id: 'ProductA', name: 'Product A', price: 10.0 },
-            { id: 'ProductB', name: 'Product B', price: 15.0 },
-            { id: 'ProductC', name: 'Product C', price: 20.0 }
+            { id: 'ProductA', name: 'Product A', price: 10.0, image: 'a.jpg' },
+            { id: 'ProductB', name: 'Product B', price: 15.0, image: 'b.jpg' },
+            { id: 'ProductC', name: 'Product C', price: 20.0, image: 'c.jpg' }
         ];
 
         let cart = { 'ProductA': 0, 'ProductB': 0, 'ProductC': 0 };
@@ -76,11 +83,16 @@
             const container = document.getElementById('catalog');
             container.innerHTML = '';
             catalog.forEach(product => {
+                // 2. UPDATED HTML TEMPLATE TO INCLUDE <img src="...">
                 container.innerHTML += `
                     <div class="product">
-                        <div>
-                            <strong>${product.name}</strong> - ${product.price}€
-                            <span class="promo-text">Buy 2 get 1 free!</span>
+                        <div class="product-info">
+                            <img src="${product.image}" alt="${product.name}" class="product-img" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'60\\' height=\\'60\\'><rect width=\\'60\\' height=\\'60\\' fill=\\'%23eee\\'/><text x=\\'50%\\' y=\\'50%\\' fill=\\'%23aaa\\' dy=\\'.3em\\' text-anchor=\\'middle\\'>No Img</text></svg>'">
+                            <div class="product-details">
+                                <strong>${product.name}</strong>
+                                <span>${product.price.toFixed(2)}€</span>
+                                <span class="promo-text">Buy 2 get 1 free!</span>
+                            </div>
                         </div>
                         <div class="controls">
                             <button onclick="updateCart('${product.id}', -1)">-</button>
