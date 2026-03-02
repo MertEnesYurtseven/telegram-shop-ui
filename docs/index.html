@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Store</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); padding: 20px; margin: 0; }
+        .product { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding: 15px 0; }
+        .controls { display: flex; align-items: center; gap: 10px; }
+        button { background-color: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .checkout-box { margin-top: 30px; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 8px; }
+        input[type="number"] { width: 80px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+        #checkout-btn { width: 100%; margin-top: 15px; font-weight: bold; }
+        .promo-text { color: #e74c3c; font-size: 0.8em; display: block; }
+    </style>
+</head>
+<body>
+
+    <h2>Store Catalog</h2>
+    <div id="catalog"></div>
+
+    <div class="checkout-box">
+        <h3>Cart Summary</h3>
+        <p>Available Points: <strong id="user-points">0.00</strong>€</p>
+        <p>Subtotal (w/ promos): <strong id="cart-total">0.00</strong>€</p>
+        
+        <label>Points to apply: <br>
+            <input type="number" id="points-input" value="0" min="0" step="0.1" oninput="updateUI()">
+        </label>
+        
+        <p><strong>Final Total: <span id="final-total">0.00</span>€</strong></p>
+        <button id="checkout-btn" onclick="sendOrder()">Place Order (Cash on Delivery)</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const maxPoints = parseFloat(urlParams.get('points')) || 0;
+        document.getElementById('user-points').innerText = maxPoints.toFixed(2);
+
+        const catalog = [
+            { id: 'ProductA', name: 'Product A', price: 10.0 },
+            { id: 'ProductB', name: 'Product B', price: 15.0 },
+            { id: 'ProductC', name: 'Product C', price: 20.0 }
+        ];
+
+        let cart = { 'ProductA': 0, 'ProductB': 0, 'ProductC': 0 };
+
+        function renderCatalog() {
+            const container = document.getElementById('catalog');
+            container.innerHTML = '';
+            catalog.forEach(product => {
+                container.innerHTML += `
+                    <div class="product">
+                        <div>
+                            <strong>${product.name}</strong> - ${product.price}€
+                            <span class="promo-text">Buy 2 get 1 free!</span>
+                        </div>
+                        <div class="controls">
+                            <button onclick="updateCart('${product.id}', -1)">-</button>
+                            <span id="qty-${product.id}">${cart[product.id]}</span>
+                            <button onclick="updateCart('${product.id}', 1)">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateCart(id, change) {
+            cart[id] = Math.max(0, cart[id] + change);
+            document.getElementById(`qty-${id}`).innerText = cart[id];
+            updateUI();
+        }
+
+        function updateUI() {
+            let subtotal = 0;
+            catalog.forEach(product => {
+                let qty = cart[product.id];
+                let paidQty = qty - Math.floor(qty / 3);
+                subtotal += paidQty * product.price;
+            });
+
+            document.getElementById('cart-total').innerText = subtotal.toFixed(2);
+
+            let pointsInput = parseFloat(document.getElementById('points-input').value) || 0;
+            if (pointsInput > maxPoints) {
+                pointsInput = maxPoints;
+                document.getElementById('points-input').value = maxPoints;
+            }
+            if (pointsInput > subtotal) {
+                pointsInput = subtotal; 
+                document.getElementById('points-input').value = subtotal;
+            }
+
+            let finalTotal = subtotal - pointsInput;
+            document.getElementById('final-total').innerText = finalTotal.toFixed(2);
+            
+            const checkoutBtn = document.getElementById('checkout-btn');
+            if (subtotal === 0) {
+                checkoutBtn.disabled = true;
+                checkoutBtn.innerText = "Cart is empty";
+            } else {
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerText = `Pay ${finalTotal.toFixed(2)}€ (Cash on Delivery)`;
+            }
+        }
+
+        function sendOrder() {
+            let finalCart = catalog
+                .filter(p => cart[p.id] > 0)
+                .map(p => ({ id: p.id, qty: cart[p.id] }));
+
+            let pointsToUse = parseFloat(document.getElementById('points-input').value) || 0;
+
+            const payload = {
+                cart: finalCart,
+                points_used: pointsToUse
+            };
+
+            tg.sendData(JSON.stringify(payload));
+            tg.close();
+        }
+
+        renderCatalog();
+        updateUI();
+    </script>
+</body>
+</html>
