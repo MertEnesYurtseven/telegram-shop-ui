@@ -14,6 +14,7 @@
         input[type="number"] { width: 80px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
         #checkout-btn { width: 100%; margin-top: 15px; font-weight: bold; }
         .promo-text { color: #e74c3c; font-size: 0.8em; display: block; }
+        .fulfillment-box { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -22,6 +23,27 @@
     <div id="catalog"></div>
 
     <div class="checkout-box">
+        
+        <div class="fulfillment-box">
+            <h3>Fulfillment Options</h3>
+            <label><input type="radio" name="fulfillment" value="PICKUP" checked onchange="toggleFulfillment()"> Pickup In-Store</label>
+            <label style="margin-left: 15px;"><input type="radio" name="fulfillment" value="DELIVERY" onchange="toggleFulfillment()"> Delivery (Min 50€)</label>
+            
+            <div id="pickup-options" style="margin-top: 15px;">
+                <label>Select Location:</label><br>
+                <select id="pickup-location" style="width: 100%; padding: 8px; margin-top: 5px;">
+                    <option value="Store A - Downtown">Store A - Downtown</option>
+                    <option value="Store B - Northside">Store B - Northside</option>
+                </select>
+            </div>
+            
+            <div id="delivery-options" style="margin-top: 15px; display: none;">
+                <label>Delivery Address:</label><br>
+                <textarea id="delivery-address" rows="3" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;" placeholder="Enter full address..."></textarea>
+                <span id="delivery-warning" style="color: red; font-size: 0.85em; display: none;">Delivery requires a minimum subtotal of 50.00€.</span>
+            </div>
+        </div>
+
         <h3>Cart Summary</h3>
         <p>Available Points: <strong id="user-points">0.00</strong>€</p>
         <p>Subtotal (w/ promos): <strong id="cart-total">0.00</strong>€</p>
@@ -70,6 +92,18 @@
             });
         }
 
+        function toggleFulfillment() {
+            const type = document.querySelector('input[name="fulfillment"]:checked').value;
+            if (type === 'PICKUP') {
+                document.getElementById('pickup-options').style.display = 'block';
+                document.getElementById('delivery-options').style.display = 'none';
+            } else {
+                document.getElementById('pickup-options').style.display = 'none';
+                document.getElementById('delivery-options').style.display = 'block';
+            }
+            updateUI();
+        }
+
         function updateCart(id, change) {
             cart[id] = Math.max(0, cart[id] + change);
             document.getElementById(`qty-${id}`).innerText = cart[id];
@@ -100,10 +134,19 @@
             document.getElementById('final-total').innerText = finalTotal.toFixed(2);
             
             const checkoutBtn = document.getElementById('checkout-btn');
-            if (subtotal === 0) {
+            const type = document.querySelector('input[name="fulfillment"]:checked').value;
+            const warning = document.getElementById('delivery-warning');
+
+            if (type === 'DELIVERY' && subtotal < 50) {
+                warning.style.display = 'block';
+                checkoutBtn.disabled = true;
+                checkoutBtn.innerText = "Minimum 50€ for Delivery";
+            } else if (subtotal === 0) {
+                warning.style.display = 'none';
                 checkoutBtn.disabled = true;
                 checkoutBtn.innerText = "Cart is empty";
             } else {
+                warning.style.display = 'none';
                 checkoutBtn.disabled = false;
                 checkoutBtn.innerText = `Pay ${finalTotal.toFixed(2)}€ (Cash on Delivery)`;
             }
@@ -115,10 +158,22 @@
                 .map(p => ({ id: p.id, qty: cart[p.id] }));
 
             let pointsToUse = parseFloat(document.getElementById('points-input').value) || 0;
+            const type = document.querySelector('input[name="fulfillment"]:checked').value;
+            
+            let addr = "";
+            if (type === 'PICKUP') addr = document.getElementById('pickup-location').value;
+            if (type === 'DELIVERY') addr = document.getElementById('delivery-address').value;
+
+            if (type === 'DELIVERY' && addr.trim() === '') {
+                tg.showAlert("Please enter a delivery address.");
+                return;
+            }
 
             const payload = {
                 cart: finalCart,
-                points_used: pointsToUse
+                points_used: pointsToUse,
+                fulfillment_type: type,
+                address: addr
             };
 
             tg.sendData(JSON.stringify(payload));
